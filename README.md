@@ -4,7 +4,7 @@ Herramienta web para generar código LaTeX de tablas compatible con el `\newcomm
 
 ![dark mode UI](https://img.shields.io/badge/UI-dark%20mode-1e1e1a?style=flat-square) ![LaTeX](https://img.shields.io/badge/LaTeX-xcolor%20%7C%20longtable-78b4e0?style=flat-square) ![deploy](https://img.shields.io/badge/deploy-Docker%20%2B%20Nginx-7ec87e?style=flat-square)
 
----
+
 
 # Características
 
@@ -17,7 +17,7 @@ Herramienta web para generar código LaTeX de tablas compatible con el `\newcomm
 - **Copiar Macro** — copia al portapapeles el `\newcommand{\tabla}` completo listo para pegar en el preámbulo
 - **Copiar Tabla** — copia el código `\tabla{...}` de la tabla actual
 
----
+
 
 ## El comando `\tabla`
 
@@ -40,9 +40,8 @@ La herramienta genera código para el siguiente `\newcommand`, que deberás tene
 \end{center}
 }
 ```
-
 | Argumento | Descripción |
-|-----------|-------------|
+|--|-|
 | `#1` | Número de columnas |
 | `#2` | Col spec (ej. `\|l\|c\|r\|`) |
 | `#3` | Fila de cabecera con `\cellcolor` y `\textcolor` |
@@ -56,20 +55,11 @@ El botón **Copiar Macro** copia este `\newcommand` completo para que los puedas
 \usepackage{colortbl}
 ```
 
----
-
 # Uso de la herramienta
 
 ## Navegador web
 
-Al ser un único fichero `.html` sin dependencias externas (salvo Google Fonts), también puedes abrirlo directamente en el navegador:
-
-```bash
-open TableGenerator.html   # macOS
-xdg-open TableGenerator.html  # Linux
-```
-
----
+Al ser un único fichero `.html` sin dependencias externas (salvo Google Fonts), también puedes abrirlo directamente en el navegador.
 
 ## Despliegue con Docker
 
@@ -129,7 +119,7 @@ docker compose up -d
 
 La herramienta queda disponible en `http://IP DEL SERVIDOR:8080/TableGenerator.html`.
 
----
+
 
 ## Tecnologías
 
