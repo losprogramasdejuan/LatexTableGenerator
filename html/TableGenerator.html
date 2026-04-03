@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaTeX Table Generator</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1a1a18;
+      --paper: #f4f0e8;
+      --cream: #ede8db;
+      --accent: #c84b2f;
+      --accent2: #2f6fc8;
+      --rule: #c8c0ad;
+      --mono-bg: #1e1e1a;
+      --mono-fg: #e8e0c8;
+      --mono-green: #7ec87e;
+      --mono-blue: #78b4e0;
+      --mono-orange: #e0a060;
+      --mono-comment: #888070;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'DM Mono', monospace;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 2rem 2.5rem 1.5rem;
+      border-bottom: 2px solid #111;
+      display: flex;
+      align-items: baseline;
+      gap: 1.5rem;
+      background: var(--mono-bg);
+    }
+
+    header h1 {
+      font-family: 'Fraunces', serif;
+      font-size: 1.9rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: var(--mono-fg);
+    }
+
+    header h1 span {
+      color: var(--mono-green);
+      font-style: italic;
+    }
+
+    header p {
+      font-size: 0.72rem;
+      color: var(--mono-comment);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ── MAIN LAYOUT ── */
+    main {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 0;
+      height: calc(100vh - 90px);
+      overflow: hidden;
+    }
+
+    /* ── LEFT PANEL ── */
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 2px solid #111;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1.5px solid #333;
+      background: #161612;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--mono-comment);
+      margin-right: 0.25rem;
+    }
+
+    .btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      padding: 0.35rem 0.7rem;
+      border: 1.5px solid #555;
+      background: #2a2a26;
+      color: var(--mono-fg);
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      background: var(--mono-fg);
+      color: var(--mono-bg);
+      border-color: var(--mono-fg);
+    }
+
+    .btn.danger {
+      border-color: #c84b2f;
+      color: #e07060;
+    }
+
+    .btn.danger:hover {
+      background: #c84b2f;
+      color: var(--mono-fg);
+      border-color: #c84b2f;
+    }
+
+    .btn.primary {
+      background: var(--mono-fg);
+      color: var(--mono-bg);
+      border-color: var(--mono-fg);
+    }
+
+    .btn.primary:hover {
+      background: var(--mono-orange);
+      border-color: var(--mono-orange);
+      color: var(--mono-bg);
+    }
+
+    .sep {
+      width: 1px;
+      height: 1.5rem;
+      background: #444;
+      margin: 0 0.25rem;
+    }
+
+    /* ── PASTE ZONE ── */
+    .paste-zone {
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1.5px solid #333;
+      background: var(--mono-bg);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .paste-zone label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--mono-comment);
+      white-space: nowrap;
+    }
+
+    #paste-input {
+      flex: 1;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      padding: 0.4rem 0.6rem;
+      border: 1.5px solid #444;
+      background: #2a2a26;
+      color: var(--mono-fg);
+      outline: none;
+      transition: border-color 0.15s;
+      resize: none;
+      height: 2.2rem;
+      overflow: hidden;
+    }
+
+    #paste-input:focus {
+      border-color: var(--mono-blue);
+    }
+
+    #paste-input::placeholder {
+      color: #555;
+    }
+
+    /* ── TABLE WRAPPER ── */
+    .table-wrapper {
+      flex: 1;
+      overflow: auto;
+      padding: 1.25rem;
+    }
+
+    /* ── OPTIONS BAR ── */
+    .options-bar {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 0.6rem 1.25rem;
+      border-bottom: 1.5px solid #333;
+      background: #161612;
+      flex-wrap: wrap;
+    }
+
+    .opt-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .opt-group label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--mono-comment);
+    }
+
+    .opt-group select,
+    .opt-group input[type=text] {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      padding: 0.28rem 0.5rem;
+      border: 1.5px solid #444;
+      background: #2a2a26;
+      color: var(--mono-fg);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .opt-group select:focus,
+    .opt-group input[type=text]:focus {
+      border-color: var(--mono-blue);
+    }
+
+    .opt-group input[type=checkbox] {
+      accent-color: var(--mono-green);
+      cursor: pointer;
+    }
+
+    /* ── COLOR BAR ── */
+    .color-bar {
+      padding: 0.6rem 1.25rem;
+      border-bottom: 1.5px solid #333;
+      background: var(--mono-bg);
+    }
+
+    .color-bar-title {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #555;
+      margin-bottom: 0.45rem;
+    }
+
+    .color-bar-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .color-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .color-swatch {
+      width: 20px;
+      height: 20px;
+      border: 1.5px solid #444;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    .header-cell-preview {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      padding: 0.3rem 0.8rem;
+      border: 1.5px solid #444;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+      min-width: 90px;
+      text-align: center;
+    }
+
+    /* ── EDITABLE TABLE — header row with dynamic color ── */
+    #data-table tr.header-row td {
+      border-bottom-color: var(--ink);
+    }
+
+    #data-table tr.header-row td input {
+      font-weight: 500;
+    }
+
+
+    #data-table {
+      border-collapse: collapse;
+      min-width: 100%;
+      font-size: 0.8rem;
+    }
+
+    #data-table th,
+    #data-table td {
+      border: 1.5px solid var(--rule);
+      padding: 0;
+      min-width: 100px;
+      position: relative;
+    }
+
+    #data-table th {
+      background: var(--cream);
+      border-color: var(--ink);
+    }
+
+    #data-table th .th-inner {
+      display: flex;
+      align-items: stretch;
+    }
+
+    #data-table th .th-label {
+      flex: 1;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #666;
+      cursor: default;
+      user-select: none;
+    }
+
+    .col-del-btn {
+      width: 1.5rem;
+      border: none;
+      border-left: 1px solid var(--rule);
+      background: transparent;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: #bbb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .col-del-btn:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    /* Header row styling is applied dynamically via JS */
+    #data-table tr.header-row td input {
+      font-weight: 500;
+    }
+
+    #data-table td input {
+      width: 100%;
+      height: 100%;
+      border: none;
+      padding: 0.42rem 0.6rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      background: transparent;
+      color: var(--ink);
+      outline: none;
+    }
+
+    #data-table td input:focus {
+      background: rgba(47, 111, 200, 0.07);
+    }
+
+    .row-ctrl {
+      background: var(--cream) !important;
+      border-color: var(--rule) !important;
+      width: 2rem;
+      text-align: center;
+    }
+
+    .row-del-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #ccc;
+      padding: 0.2rem;
+      transition: color 0.1s;
+    }
+
+    .row-del-btn:hover {
+      color: #e07060;
+    }
+
+    /* Header row checkbox col */
+    .header-check-cell {
+      background: var(--cream) !important;
+      text-align: center;
+      vertical-align: middle;
+      padding: 0 0.4rem;
+    }
+
+    .header-check-cell input[type=checkbox] {
+      accent-color: var(--mono-green);
+      width: 13px;
+      height: 13px;
+      cursor: pointer;
+    }
+
+    /* ── RIGHT PANEL ── */
+    .right-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--mono-bg);
+    }
+
+    .output-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1.5px solid #333;
+      background: #161612;
+    }
+
+    .output-header span {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #666;
+    }
+
+    .copy-btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      padding: 0.3rem 0.8rem;
+      border: 1.5px solid #444;
+      background: transparent;
+      color: #aaa;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.15s;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--mono-green);
+      color: var(--mono-green);
+    }
+
+    .copy-btn.copied {
+      border-color: var(--mono-green);
+      color: var(--mono-green);
+    }
+
+    #latex-output {
+      flex: 1;
+      overflow: auto;
+      padding: 1.25rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      line-height: 1.75;
+      color: var(--mono-fg);
+      white-space: pre;
+      user-select: text;
+    }
+
+    /* Syntax highlighting */
+    .lt-cmd {
+      color: var(--mono-blue);
+    }
+
+    .lt-brace {
+      color: #c8a0e0;
+    }
+
+    .lt-amp {
+      color: var(--mono-orange);
+      font-weight: 500;
+    }
+
+    .lt-nl {
+      color: var(--mono-comment);
+    }
+
+    .lt-hline {
+      color: var(--mono-green);
+    }
+
+    .lt-val {
+      color: var(--mono-fg);
+    }
+
+    .lt-arg1 {
+      color: var(--mono-orange);
+    }
+
+    .lt-arg2 {
+      color: var(--mono-blue);
+    }
+
+    .lt-arg3 {
+      color: var(--mono-green);
+    }
+
+    .lt-arg4 {
+      color: #e07878;
+    }
+
+    .lt-comment {
+      color: var(--mono-comment);
+      font-style: italic;
+    }
+
+    /* ── STATUS BAR ── */
+    .status-bar {
+      grid-column: 1 / -1;
+      padding: 0.45rem 1.5rem;
+      border-top: 1.5px solid var(--ink);
+      background: var(--ink);
+      color: #aaa;
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+      display: flex;
+      gap: 2rem;
+    }
+
+    .status-bar span {
+      color: #ddd;
+    }
+
+    /* ── ARG LEGEND ── */
+    .arg-legend {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.55rem 1.25rem;
+      border-bottom: 1.5px solid #2a2a24;
+      background: #161612;
+      flex-wrap: wrap;
+    }
+
+    .arg-pill {
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+      color: var(--c);
+      border: 1px solid var(--c);
+      padding: 0.15rem 0.55rem;
+      opacity: 0.85;
+    }
+
+    .arg-pill span {
+      color: #888;
+      margin-left: 0.35rem;
+    }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 3rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--ink);
+      color: var(--paper);
+      padding: 0.55rem 1.2rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      border: 1px solid #444;
+      z-index: 100;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--rule);
+      border-radius: 3px;
+    }
+
+    .right-panel ::-webkit-scrollbar-thumb {
+      background: #444;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Generador de Tablas para <span>Overleaf</span></h1>
+    <p>Edita una tabla → Código listo para pegar en Overleaf</p>
+  </header>
+
+  <main>
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+
+      <!-- Paste zone -->
+      <div class="paste-zone">
+        <label>(Opcional) Pegar CSV / Excel</label>
+        <textarea id="paste-input" placeholder="Pega aquí datos copiados de Excel o CSV y pulsa Importar…"
+          spellcheck="false"></textarea>
+        <button class="btn primary" onclick="importPaste()">Importar</button>
+      </div>
+
+      <!-- Options bar -->
+      <div class="options-bar">
+        <div class="opt-group">
+          <label title="#2 — especificación de columnas generada automáticamente">Diseño de columnas</label>
+          <select id="align-select" onchange="renderLatex()">
+            <option value="l">l — Alinear a izquierda</option>
+            <option value="c">c — Alinear a centro</option>
+            <option value="r">r — Alinear a derecha</option>
+            <option value="p{2cm}">p{2cm} — párrafo</option>
+          </select>
+        </div>
+        <div class="opt-group">
+          <label>Bordes vert.</label>
+          <input type="checkbox" id="vborder" onchange="renderLatex()" checked>
+        </div>
+        <div class="opt-group">
+          <label>Bordes horiz.</label>
+          <input type="checkbox" id="hborder" onchange="renderLatex()" checked>
+        </div>
+        <div class="opt-group">
+          <label title="Spec manual sobreescribe el selector">Personalizar columnas</label>
+          <input type="text" id="manual-spec" placeholder="ej. |l|c|r|" oninput="renderLatex()" style="width:130px">
+        </div>
+      </div>
+
+      <!-- Header color bar -->
+      <div class="color-bar">
+        <div class="color-bar-title">Diseño de la cabecera</div>
+        <div class="color-bar-controls">
+          <div class="opt-group">
+            <label>Fondo de celda</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="cell-swatch"></div>
+              <select id="cell-color-select" onchange="onSelectChange()">
+              </select>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Texto</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="text-swatch"></div>
+              <select id="text-color-select" onchange="onSelectChange()">
+              </select>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Negrita</label>
+            <input type="checkbox" id="header-bold" checked onchange="renderLatex()">
+          </div>
+          <div class="sep"></div>
+          <div class="header-cell-preview" id="header-cell-preview">
+            Vista previa
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="color-bar-title">Diseño de la tabla</div>
+        <div class="color-bar-controls">
+          <!--<span class="toolbar-label">Diseño Filas</span>-->
+          <button class="btn" onclick="addRow()">＋ Añadir fila</button>
+          <button class="btn danger" onclick="delLastRow()">－ Eliminar fila</button>
+          <div class="sep"></div>
+          <!--<span class="toolbar-label">Diseño Columnas</span>-->
+          <button class="btn" onclick="addCol()">＋ Añadir columna</button>
+          <button class="btn danger" onclick="delLastCol()">－ Eliminar columna</button>
+          <div class="sep"></div>
+          <button class="btn" onclick="resetTable()" title="Tabla en blanco: cabecera + 3×3">↺ Resetear</button>
+          <button class="btn danger" onclick="clearAll()">✕ Limpiar todo</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrapper">
+        <table id="data-table">
+          <thead id="table-head"></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+      <div class="output-header">
+        <span>\tabla{<span style="color:var(--mono-orange)">#1</span>}{<span
+            style="color:var(--mono-blue)">#2</span>}{<span style="color:var(--mono-green)">#3</span>}{<span
+            style="color:#e07878">#4</span>}</span>
+        <button class="copy-btn" id="macro-btn" onclick="copyMacro()">Copiar Macro</button>
+        <button class="copy-btn" id="copy-btn" onclick="copyTable()">Copiar Tabla</button>
+      </div>
+      <div class="arg-legend">
+        <div class="arg-pill" style="--c:var(--mono-orange)">#1 <span>nº cols</span></div>
+        <div class="arg-pill" style="--c:var(--mono-blue)">#2 <span>col spec</span></div>
+        <div class="arg-pill" style="--c:var(--mono-green)">#3 <span>cabecera</span></div>
+        <div class="arg-pill" style="--c:#e07878">#4 <span>contenido</span></div>
+      </div>
+      <div id="latex-output"></div>
+    </div>
+  </main>
+
+  <div class="status-bar" id="status-bar">
+    <div>Filas: <span id="st-rows">0</span></div>
+    <div>Columnas: <span id="st-cols">0</span></div>
+    <div>Celdas: <span id="st-cells">0</span></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── State ──────────────────────────────────────────────────────────────
+    let data = [];        // data[row][col] = string
+    let numCols = 0;
+
+    // ── Init ───────────────────────────────────────────────────────────────
+    function initDefault() {
+      data = [
+        ['Primera', 'Segunda', 'Tercera'],
+        ['A', 'B', 'C'],
+        ['D', 'E', 'F'],
+        ['G', 'H', 'I'],
+      ];
+      numCols = 3;
+      renderTable();
+      renderLatex();
+    }
+
+    // ── Table Render ───────────────────────────────────────────────────────
+    function renderTable() {
+      const thead = document.getElementById('table-head');
+      const tbody = document.getElementById('table-body');
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+
+      if (!data.length || !numCols) return;
+
+      // Column headers (A, B, C…)
+      const headRow = document.createElement('tr');
+      // empty corner for row-ctrl
+      const cornerTh = document.createElement('th');
+      cornerTh.className = 'row-ctrl';
+      headRow.appendChild(cornerTh);
+
+      for (let c = 0; c < numCols; c++) {
+        const th = document.createElement('th');
+        th.innerHTML = `<div class="th-inner">
+      <span class="th-label">${colLetter(c)}</span>
+      <button class="col-del-btn" title="Eliminar columna" onclick="delCol(${c})">×</button>
+    </div>`;
+        headRow.appendChild(th);
+      }
+      thead.appendChild(headRow);
+
+      // Data rows
+      data.forEach((row, r) => {
+        const tr = document.createElement('tr');
+        const isHeader = r === 0;
+        if (isHeader) tr.classList.add('header-row');
+
+        // Row control
+        const ctrlTd = document.createElement('td');
+        ctrlTd.className = 'row-ctrl';
+        ctrlTd.innerHTML = `<button class="row-del-btn" title="Eliminar fila" onclick="delRow(${r})">×</button>`;
+        tr.appendChild(ctrlTd);
+
+        for (let c = 0; c < numCols; c++) {
+          const td = document.createElement('td');
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.value = row[c] || '';
+          inp.dataset.row = r;
+          inp.dataset.col = c;
+          inp.addEventListener('input', onCellInput);
+          inp.addEventListener('keydown', onCellKeydown);
+          td.appendChild(inp);
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      });
+
+      updateStatus();
+      requestAnimationFrame(applyHeaderColors);
+    }
+
+    function onCellInput(e) {
+      const r = +e.target.dataset.row;
+      const c = +e.target.dataset.col;
+      data[r][c] = e.target.value;
+      renderLatex();
+    }
+
+    function onCellKeydown(e) {
+      const r = +e.target.dataset.row;
+      const c = +e.target.dataset.col;
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const nextC = c + 1;
+        if (nextC < numCols) focusCell(r, nextC);
+        else if (r + 1 < data.length) focusCell(r + 1, 0);
+        else { addRow(); setTimeout(() => focusCell(r + 1, 0), 20); }
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (r + 1 < data.length) focusCell(r + 1, c);
+        else { addRow(); setTimeout(() => focusCell(r + 1, c), 20); }
+      }
+      if (e.key === 'ArrowUp' && r > 0) focusCell(r - 1, c);
+      if (e.key === 'ArrowDown' && r + 1 < data.length) focusCell(r + 1, c);
+    }
+
+    function focusCell(r, c) {
+      const inp = document.querySelector(`#table-body input[data-row="${r}"][data-col="${c}"]`);
+      if (inp) { inp.focus(); inp.select(); }
+    }
+
+    function colLetter(c) {
+      let s = '';
+      c++;
+      while (c > 0) { c--; s = String.fromCharCode(65 + (c % 26)) + s; c = Math.floor(c / 26); }
+      return s;
+    }
+
+    // ── Row / Col operations ───────────────────────────────────────────────
+    function addRow() {
+      data.push(Array(numCols).fill(''));
+      renderTable();
+      renderLatex();
+      setTimeout(() => focusCell(data.length - 1, 0), 20);
+    }
+
+    function delLastRow() {
+      if (data.length <= 1) return showToast('Mínimo 1 fila');
+      data.pop();
+      renderTable();
+      renderLatex();
+    }
+
+    function delRow(r) {
+      if (data.length <= 1) return showToast('Mínimo 1 fila');
+      data.splice(r, 1);
+      renderTable();
+      renderLatex();
+    }
+
+    function addCol() {
+      numCols++;
+      data.forEach(row => row.push(''));
+      renderTable();
+      renderLatex();
+      setTimeout(() => focusCell(0, numCols - 1), 20);
+    }
+
+    function delCol(c) {
+      if (numCols <= 1) return showToast('Mínimo 1 columna');
+      numCols--;
+      data.forEach(row => row.splice(c, 1));
+      renderTable();
+      renderLatex();
+    }
+
+    function delLastCol() {
+      if (numCols <= 1) return showToast('Mínimo 1 columna');
+      numCols--;
+      data.forEach(row => row.splice(numCols, 1));
+      renderTable();
+      renderLatex();
+    }
+
+    function resetTable() {
+      data = [
+        ['', '', ''],
+        ['', '', ''],
+        ['', '', ''],
+        ['', '', ''],
+      ];
+      numCols = 3;
+      renderTable();
+      renderLatex();
+      showToast('Tabla reseteada: cabecera + 3 filas × 3 columnas');
+      setTimeout(() => focusCell(0, 0), 20);
+    }
+
+    function clearAll() {
+      if (!confirm('¿Limpiar toda la tabla?')) return;
+      data = data.map(row => Array(numCols).fill(''));
+      renderTable();
+      renderLatex();
+    }
+
+    // ── Import ─────────────────────────────────────────────────────────────
+    function importPaste() {
+      const raw = document.getElementById('paste-input').value.trim();
+      if (!raw) return showToast('Nada que importar');
+
+      const rows = raw.split(/\r?\n/).map(line => {
+        // Try tab first (Excel), then semicolon, then comma
+        if (line.includes('\t')) return line.split('\t');
+        if (line.includes(';')) return line.split(';');
+        return line.split(',');
+      });
+
+      if (!rows.length) return;
+      numCols = Math.max(...rows.map(r => r.length));
+      data = rows.map(r => {
+        const padded = [...r];
+        while (padded.length < numCols) padded.push('');
+        return padded.map(c => c.trim());
+      });
+
+      document.getElementById('paste-input').value = '';
+      renderTable();
+      renderLatex();
+      showToast(`Importadas ${data.length} filas × ${numCols} columnas`);
+    }
+
+    // ── xcolor named colors ────────────────────────────────────────────────
+    const XCOLORS = {
+      'Base (xcolor)': [
+        { name: 'black', hex: '#000000' }, { name: 'white', hex: '#ffffff' },
+        { name: 'red', hex: '#ff0000' }, { name: 'green', hex: '#00ff00' },
+        { name: 'blue', hex: '#0000ff' }, { name: 'cyan', hex: '#00ffff' },
+        { name: 'magenta', hex: '#ff00ff' }, { name: 'yellow', hex: '#ffff00' },
+        { name: 'orange', hex: '#ff8000' }, { name: 'violet', hex: '#8000ff' },
+        { name: 'purple', hex: '#800080' }, { name: 'brown', hex: '#804000' },
+        { name: 'pink', hex: '#ffaaaa' }, { name: 'olive', hex: '#808000' },
+        { name: 'teal', hex: '#008080' }, { name: 'lime', hex: '#80ff00' },
+        { name: 'darkgray', hex: '#404040' }, { name: 'gray', hex: '#808080' },
+        { name: 'lightgray', hex: '#c0c0c0' },
+      ],
+      'dvipsnames (68)': [
+        { name: 'Apricot', hex: '#ffad7a' }, { name: 'Aquamarine', hex: '#1bced1' },
+        { name: 'Bittersweet', hex: '#c84b16' }, { name: 'Black', hex: '#231f20' },
+        { name: 'Blue', hex: '#2d2f92' }, { name: 'BlueGreen', hex: '#00b89f' },
+        { name: 'BlueViolet', hex: '#473992' }, { name: 'BrickRed', hex: '#b6321c' },
+        { name: 'Brown', hex: '#792500' }, { name: 'BurntOrange', hex: '#ef7f00' },
+        { name: 'CadetBlue', hex: '#606e8c' }, { name: 'CarnationPink', hex: '#f2a7c3' },
+        { name: 'Cerulean', hex: '#009ece' }, { name: 'CornflowerBlue', hex: '#41a7d8' },
+        { name: 'Cyan', hex: '#00aeef' }, { name: 'Dandelion', hex: '#fdbc42' },
+        { name: 'DarkOrchid', hex: '#a4538a' }, { name: 'Emerald', hex: '#00a99d' },
+        { name: 'ForestGreen', hex: '#009b55' }, { name: 'Fuchsia', hex: '#8c368c' },
+        { name: 'Goldenrod', hex: '#ffde00' }, { name: 'Gray', hex: '#949698' },
+        { name: 'Green', hex: '#00a64f' }, { name: 'GreenYellow', hex: '#f7ff3c' },
+        { name: 'JungleGreen', hex: '#00a99a' }, { name: 'Lavender', hex: '#f49ec4' },
+        { name: 'LimeGreen', hex: '#8dc73e' }, { name: 'Magenta', hex: '#ec008c' },
+        { name: 'Mahogany', hex: '#a52a2a' }, { name: 'Maroon', hex: '#af3235' },
+        { name: 'Melon', hex: '#f89e7b' }, { name: 'MidnightBlue', hex: '#006795' },
+        { name: 'Mulberry', hex: '#a93c93' }, { name: 'NavyBlue', hex: '#006eb8' },
+        { name: 'OliveGreen', hex: '#3d9970' }, { name: 'Orange', hex: '#f7941d' },
+        { name: 'OrangeRed', hex: '#f26035' }, { name: 'Orchid', hex: '#af72b0' },
+        { name: 'Peach', hex: '#f7965a' }, { name: 'Periwinkle', hex: '#6f72b8' },
+        { name: 'PineGreen', hex: '#008b72' }, { name: 'Plum', hex: '#92268f' },
+        { name: 'ProcessBlue', hex: '#00b0f0' }, { name: 'Purple', hex: '#99479b' },
+        { name: 'RawSienna', hex: '#974006' }, { name: 'Red', hex: '#ed1b23' },
+        { name: 'RedOrange', hex: '#f26522' }, { name: 'RedViolet', hex: '#a1246b' },
+        { name: 'Rhodamine', hex: '#ef559f' }, { name: 'RoyalBlue', hex: '#0071bc' },
+        { name: 'RoyalPurple', hex: '#613f99' }, { name: 'RubineRed', hex: '#ca005d' },
+        { name: 'Salmon', hex: '#f69289' }, { name: 'SeaGreen', hex: '#3cb371' },
+        { name: 'Sepia', hex: '#671800' }, { name: 'SkyBlue', hex: '#46c5dd' },
+        { name: 'SpringGreen', hex: '#c6dc67' }, { name: 'Tan', hex: '#da9d76' },
+        { name: 'TealBlue', hex: '#00827f' }, { name: 'Thistle', hex: '#d8b2d1' },
+        { name: 'Turquoise', hex: '#00b4ce' }, { name: 'Violet', hex: '#58429b' },
+        { name: 'VioletRed', hex: '#ef58a0' }, { name: 'White', hex: '#ffffff' },
+        { name: 'WildStrawberry', hex: '#ee2967' }, { name: 'Yellow', hex: '#fff200' },
+        { name: 'YellowGreen', hex: '#98cc70' }, { name: 'YellowOrange', hex: '#faa21a' },
+      ],
+    };
+
+    function buildColorSelects() {
+      ['cell-color-select', 'text-color-select'].forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        for (const [group, colors] of Object.entries(XCOLORS)) {
+          const og = document.createElement('optgroup');
+          og.label = group;
+          colors.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.name;
+            opt.textContent = c.name;
+            og.appendChild(opt);
+          });
+          sel.appendChild(og);
+        }
+      });
+      // Set defaults
+      document.getElementById('cell-color-select').value = 'black';
+      document.getElementById('text-color-select').value = 'white';
+      updateSwatches();
+    }
+
+    function getColorHex(name) {
+      for (const colors of Object.values(XCOLORS)) {
+        const found = colors.find(c => c.name === name);
+        if (found) return found.hex;
+      }
+      return '#888888';
+    }
+
+    function updateSwatches() {
+      const cellName = document.getElementById('cell-color-select').value;
+      const textName = document.getElementById('text-color-select').value;
+      const cellHex = getColorHex(cellName);
+      const textHex = getColorHex(textName);
+      document.getElementById('cell-swatch').style.background = cellHex;
+      document.getElementById('text-swatch').style.background = textHex;
+      const prev = document.getElementById('header-cell-preview');
+      prev.style.background = cellHex;
+      prev.style.color = textHex;
+      prev.style.fontWeight = isBold() ? '700' : '400';
+    }
+
+    function onSelectChange() {
+      updateSwatches();
+      renderLatex();
+      applyHeaderColors();
+    }
+
+    // ── Color helpers ──────────────────────────────────────────────────────
+    function getCellColor() { return document.getElementById('cell-color-select').value; }
+    function getTextColor() { return document.getElementById('text-color-select').value; }
+    function isBold() { return document.getElementById('header-bold').checked; }
+
+    function updateColorPreviews() { updateSwatches(); }
+
+    function applyHeaderColors() {
+      const cellHex = getColorHex(getCellColor());
+      const textHex = getColorHex(getTextColor());
+      const headerTds = document.querySelectorAll('#table-body tr.header-row td');
+      headerTds.forEach(td => {
+        td.style.background = cellHex;
+        td.style.color = textHex;
+        const inp = td.querySelector('input');
+        if (inp) {
+          inp.style.color = textHex;
+          inp.style.background = 'transparent';
+          inp.style.caretColor = textHex;
+        }
+      });
+    }
+
+    function wrapHeaderCell(text, cellColor, textColor, bold) {
+      const t = escTex(text);
+      const inner = bold ? `\\textbf{${t}}` : t;
+      return `\\cellcolor{${cellColor}}{\\textcolor{${textColor}}{${inner}}}`;
+    }
+
+    function renderLatex() {
+      const align = document.getElementById('align-select').value;
+      const vborder = document.getElementById('vborder').checked;
+      const hborder = document.getElementById('hborder').checked;
+      const manualSpec = document.getElementById('manual-spec').value.trim();
+      const cellColor = getCellColor();
+      const textColor = getTextColor();
+      const bold = isBold();
+
+      // #1 — número de columnas
+      const arg1 = String(numCols);
+
+      // #2 — col spec
+      const vb = vborder ? '|' : '';
+      const arg2 = manualSpec || (vb + Array(numCols).fill(align).join(vb) + vb);
+
+      // #3 — primera fila (cabecera) con \cellcolor y \textcolor
+      const headerRow = data[0] || [];
+      const arg3 = headerRow.map(c => wrapHeaderCell(c, cellColor, textColor, bold)).join(' & ');
+
+      // #4 — resto de filas (contenido)
+      const bodyRows = data.slice(1);
+      const rowSep = hborder ? ' \\\\\n    \\hline' : ' \\\\';
+      const arg4Lines = bodyRows.map(row =>
+        '    ' + row.map(c => escTex(c)).join(' & ') + rowSep
+      );
+      const arg4 = arg4Lines.length
+        ? '\n' + arg4Lines.join('\n') + '\n  '
+        : '';
+
+      // Build highlighted HTML
+      const h = {
+        cmd: s => `<span class="lt-cmd">${s}</span>`,
+        brace: s => `<span class="lt-brace">${s}</span>`,
+        arg1: s => `<span class="lt-arg1">${s}</span>`,
+        arg2: s => `<span class="lt-arg2">${s}</span>`,
+        arg3: s => `<span class="lt-arg3">${s}</span>`,
+        arg4: s => `<span class="lt-arg4">${s}</span>`,
+        amp: () => `<span class="lt-amp"> &amp; </span>`,
+        nl: () => `<span class="lt-nl"> \\\\</span>`,
+        hline: () => `<span class="lt-hline">\\hline</span>`,
+        comment: s => `<span class="lt-comment">${s}</span>`,
+        kw: s => `<span class="lt-cmd">${s}</span>`,
+        color: s => `<span class="lt-arg1">${s}</span>`,
+      };
+
+      // Highlighted #3 cells
+      const h3cells = headerRow.map(c => {
+        const t = escHtml(escTex(c));
+        const inner = bold
+          ? `${h.kw('\\textbf{')}${t}${h.brace('}')}`
+          : t;
+        return `${h.kw('\\cellcolor{')}${h.color(escHtml(cellColor))}${h.brace('}')}` +
+          `${h.brace('{')}${h.kw('\\textcolor{')}${h.color(escHtml(textColor))}${h.brace('}')}` +
+          `${h.brace('{')}${inner}${h.brace('}')}${h.brace('}')}`;
+      }).join(h.amp());
+
+      // Highlighted #4 rows
+      const h4lines = bodyRows.map(row =>
+        '    ' + row.map(c => escHtml(escTex(c))).join(h.amp()) + h.nl() + (hborder ? '\n    ' + h.hline() : '')
+      );
+      const h4 = h4lines.length
+        ? '\n' + h4lines.join('\n') + '\n  '
+        : '';
+
+      const out = [
+        `${h.cmd('\\tabla')}`,
+        `  ${h.brace('{')}${h.arg1(escHtml(arg1))}${h.brace('}')}  ${h.comment('% #1 — nº columnas')}`,
+        `  ${h.brace('{')}${h.arg2(escHtml(arg2))}${h.brace('}')}  ${h.comment('% #2 — col spec')}`,
+        `  ${h.brace('{')}${h.arg3(h3cells)}${h.brace('}')}  ${h.comment('% #3 — cabecera')}`,
+        `  ${h.brace('{')}${h.arg4(h4)}${h.brace('}')}  ${h.comment('% #4 — contenido')}`,
+      ].join('\n');
+
+      document.getElementById('latex-output').innerHTML = out;
+      updateColorPreviews();
+      updateStatus();
+    }
+
+    // Escape TeX special chars (except & and \\ which we handle structurally)
+    function escTex(s) {
+      return (s || '')
+        .replace(/%/g, '\\%')
+        .replace(/\$/g, '\\$')
+        .replace(/#/g, '\\#')
+        .replace(/_/g, '\\_')
+        .replace(/\^/g, '\\^{}')
+        .replace(/~/g, '\\textasciitilde{}')
+        .replace(/\{/g, '\\{')
+        .replace(/\}/g, '\\}');
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ── Copy Macro ─────────────────────────────────────────────────────────
+    function copyMacro() {
+      const macro =
+`\\newcommand{\\tabla}[4]{
+\\begin{center}
+    \\begin{longtable}{#2}
+        \\hline
+        #3 % Contenido de la primera fila de la tabla
+        \\\\\\hline\\endfirsthead % Terminar Primera fila de tabla
+        \\multicolumn{#1}{|l|}{{\\small\\sl\\tablaPreviousPage}}\\\\\\hline%Primera fila de tabla a principio de página
+        #3\\\\\\endhead%Primera fila de tabla a principio de página
+        \\multicolumn{#1}{|r|}{{\\small\\sl\\tablaNextPage}}\\\\ %Última fila de tabla para continuar
+        \\endfoot
+        \\endlastfoot
+        #4%Contenido del interior de la tabla
+    \\end{longtable}
+\\end{center}
+}`;
+
+      navigator.clipboard.writeText(macro).then(() => {
+        const btn = document.getElementById('macro-btn');
+        btn.textContent = '✓ Copiado';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copiar Macro'; btn.classList.remove('copied'); }, 1800);
+        showToast('\\newcommand{\\tabla} copiado');
+      });
+    }
+
+    // ── Copy Table ─────────────────────────────────────────────────────────
+    function copyTable() {
+      const align = document.getElementById('align-select').value;
+      const vborder = document.getElementById('vborder').checked;
+      const hborder = document.getElementById('hborder').checked;
+      const manualSpec = document.getElementById('manual-spec').value.trim();
+      const cellColor = getCellColor();
+      const textColor = getTextColor();
+      const bold = isBold();
+
+      const arg1 = String(numCols);
+      const vb = vborder ? '|' : '';
+      const arg2 = manualSpec || (vb + Array(numCols).fill(align).join(vb) + vb);
+      const arg3 = (data[0] || []).map(c => wrapHeaderCell(c, cellColor, textColor, bold)).join(' & ');
+      const bodyRows = data.slice(1);
+      const rowSep = hborder ? ' \\\\\n    \\hline' : ' \\\\';
+      const arg4inner = bodyRows.length
+        ? '\n' + bodyRows.map(row => '    ' + row.map(c => escTex(c)).join(' & ') + rowSep).join('\n') + '\n  '
+        : '';
+
+      const plain = `\\tabla\n  {${arg1}}\n  {${arg2}}\n  {${arg3}}\n  {${arg4inner}}`;
+
+      navigator.clipboard.writeText(plain).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = '✓ Copiado';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copiar Tabla'; btn.classList.remove('copied'); }, 1800);
+        showToast('Código LaTeX copiado');
+      });
+    }
+
+    // ── Status ─────────────────────────────────────────────────────────────
+    function updateStatus() {
+      document.getElementById('st-rows').textContent = data.length;
+      document.getElementById('st-cols').textContent = numCols;
+      document.getElementById('st-cells').textContent = data.length * numCols;
+    }
+
+    // ── Toast ──────────────────────────────────────────────────────────────
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    // ── Paste event (Ctrl+V anywhere) ──────────────────────────────────────
+    document.addEventListener('paste', (e) => {
+      if (e.target.id === 'paste-input' || e.target.tagName === 'INPUT') return;
+      const text = e.clipboardData.getData('text');
+      if (text.includes('\t') || text.includes('\n')) {
+        e.preventDefault();
+        document.getElementById('paste-input').value = text;
+        importPaste();
+      }
+    });
+
+    // ── Boot ───────────────────────────────────────────────────────────────
+    buildColorSelects();
+    initDefault();
+    updateColorPreviews();
+  </script>
+</body>
+
+</html>
