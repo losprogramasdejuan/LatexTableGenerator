@@ -1,4 +1,4 @@
-# Generador de Tablas para Overleaf
+# Generador de Tablas para Latex/Overleaf
 
 Herramienta web para generar código LaTeX de tablas compatible con el `\newcommand{\tabla}` personalizado. Diseñada para usarse junto a una instalación de [Overleaf](https://overleaf.com) (Community Edition vía `overleaf-toolkit`), aunque funciona de forma completamente independiente como fichero HTML estático.
 
