@@ -121,7 +121,7 @@ cd tools/
 docker compose up -d
 ```
 
-La herramienta queda disponible en `http://IP DEL SERVIDOR:8080/TableGenerator.html`.
+La herramienta queda disponible en `http://IP DEL SERVIDOR:9999`. Se puede redefinir el puerto modificando el fichero `docker-compose.yml`.
 
 
 
