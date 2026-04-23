@@ -59,7 +59,7 @@ El botón **Copiar Macro** copia este `\newcommand` completo para que los puedas
 
 ## Navegador web
 
-Al ser un único fichero `.html` sin dependencias externas (salvo Google Fonts), también puedes abrirlo directamente en el navegador.
+La aplicación es HTML + CSS + JS vanilla sin dependencias externas (salvo Google Fonts). Puedes abrir `webapp/TableGenerator.html` directamente en el navegador; los ficheros CSS y JS se cargan desde las subcarpetas `css/` y `js/` mediante rutas relativas.
 
 ## Despliegue con Docker
 
@@ -71,8 +71,12 @@ La herramienta se sirve como un fichero HTML estático mediante un contenedor Ng
 tools/
 ├── docker-compose.yml
 ├── nginx.conf
-└── html/
-    └── TableGenerator.html
+└── webapp/
+    ├── TableGenerator.html
+    ├── css/
+    │   └── styles.css
+    └── js/
+        └── app.js
 ```
 
 ### Fichero `nginx.conf`
@@ -106,7 +110,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./html:/usr/share/nginx/html:ro
+      - ./webapp:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
 ```
 

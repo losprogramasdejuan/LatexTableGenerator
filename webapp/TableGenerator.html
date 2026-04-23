@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaTeX Table Generator</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+  <header>
+    <h1>Generador de Tablas para <span>Overleaf</span></h1>
+    <p>Edita una tabla → Código listo para pegar en Overleaf</p>
+  </header>
+
+  <main>
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+
+      <!-- Paste zone -->
+      <div class="paste-zone">
+        <label>(Opcional) Pegar CSV / Excel</label>
+        <textarea id="paste-input" placeholder="Pega aquí datos copiados de Excel o CSV y pulsa Importar…"
+          spellcheck="false"></textarea>
+        <button class="btn primary" onclick="importPaste()">Importar</button>
+      </div>
+
+      <!-- Options bar -->
+      <div class="options-bar">
+        <div class="opt-group">
+          <label title="#2 — especificación de columnas generada automáticamente">Diseño de columnas</label>
+          <select id="align-select" onchange="renderLatex()">
+            <option value="l">l — Alinear a izquierda</option>
+            <option value="c">c — Alinear a centro</option>
+            <option value="r">r — Alinear a derecha</option>
+            <option value="p{2cm}">p{2cm} — párrafo</option>
+          </select>
+        </div>
+        <div class="opt-group">
+          <label>Bordes vert.</label>
+          <input type="checkbox" id="vborder" onchange="renderLatex()" checked>
+        </div>
+        <div class="opt-group">
+          <label>Bordes horiz.</label>
+          <input type="checkbox" id="hborder" onchange="renderLatex()" checked>
+        </div>
+        <div class="opt-group">
+          <label title="Spec manual sobreescribe el selector">Personalizar columnas</label>
+          <input type="text" id="manual-spec" placeholder="ej. |l|c|r|" oninput="renderLatex()" style="width:130px">
+        </div>
+      </div>
+
+      <!-- Header color bar -->
+      <div class="color-bar">
+        <div class="color-bar-title">Diseño de la cabecera</div>
+        <div class="color-bar-controls">
+          <div class="opt-group">
+            <label>Fondo de celda</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="cell-swatch"></div>
+              <select id="cell-color-select" onchange="onSelectChange()">
+              </select>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Texto</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="text-swatch"></div>
+              <select id="text-color-select" onchange="onSelectChange()">
+              </select>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Negrita</label>
+            <input type="checkbox" id="header-bold" checked onchange="renderLatex()">
+          </div>
+          <div class="sep"></div>
+          <div class="header-cell-preview" id="header-cell-preview">
+            Vista previa
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="color-bar-title">Diseño de la tabla</div>
+        <div class="color-bar-controls">
+          <button class="btn" onclick="addRow()">＋ Añadir fila</button>
+          <button class="btn danger" onclick="delLastRow()">－ Eliminar fila</button>
+          <div class="sep"></div>
+          <button class="btn" onclick="addCol()">＋ Añadir columna</button>
+          <button class="btn danger" onclick="delLastCol()">－ Eliminar columna</button>
+          <div class="sep"></div>
+          <button class="btn" onclick="resetTable()" title="Tabla en blanco: cabecera + 3×3">↺ Resetear</button>
+          <button class="btn danger" onclick="clearAll()">✕ Limpiar todo</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrapper">
+        <table id="data-table">
+          <thead id="table-head"></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+      <div class="output-header">
+        <span>\tabla{<span style="color:var(--mono-orange)">#1</span>}{<span
+            style="color:var(--mono-blue)">#2</span>}{<span style="color:var(--mono-green)">#3</span>}{<span
+            style="color:#e07878">#4</span>}</span>
+        <button class="copy-btn" id="macro-btn" onclick="copyMacro()">1. Copiar Macro</button>
+        <button class="copy-btn" id="copy-btn" onclick="copyTable()">2. Copiar Tabla</button>
+      </div>
+      <div class="arg-legend">
+        <div class="arg-pill" style="--c:var(--mono-orange)">#1 <span>nº cols</span></div>
+        <div class="arg-pill" style="--c:var(--mono-blue)">#2 <span>col spec</span></div>
+        <div class="arg-pill" style="--c:var(--mono-green)">#3 <span>cabecera</span></div>
+        <div class="arg-pill" style="--c:#e07878">#4 <span>contenido</span></div>
+      </div>
+      <div id="latex-output"></div>
+    </div>
+  </main>
+
+  <div class="status-bar" id="status-bar">
+    <div>Filas: <span id="st-rows">0</span></div>
+    <div>Columnas: <span id="st-cols">0</span></div>
+    <div>Celdas: <span id="st-cells">0</span></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/app.js"></script>
+</body>
+
+</html>
