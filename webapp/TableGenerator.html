@@ -88,6 +88,31 @@
         </div>
       </div>
 
+      <!-- Selected-cells color bar -->
+      <div class="color-bar">
+        <div class="color-bar-title">Color de celdas seleccionadas</div>
+        <div class="color-bar-controls">
+          <div class="opt-group">
+            <label>Fondo</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="cell-bg-swatch"></div>
+              <select id="cell-bg-select" onchange="onCellColorChange()"></select>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Texto</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="cell-fg-swatch"></div>
+              <select id="cell-fg-select" onchange="onCellColorChange()"></select>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <button class="btn" id="apply-color-btn" onclick="applyColorToSelection()" title="Aplica los colores elegidos a todas las celdas del rango seleccionado" disabled>Aplicar a selección</button>
+          <button class="btn danger" id="clear-color-btn" onclick="clearColorFromSelection()" title="Quita el color personalizado de las celdas seleccionadas" disabled>Quitar color</button>
+        </div>
+      </div>
+
       <!-- Toolbar -->
       <div class="toolbar">
         <div class="color-bar-title">Diseño de la tabla</div>
@@ -97,6 +122,9 @@
           <div class="sep"></div>
           <button class="btn" onclick="addCol()">＋ Añadir columna</button>
           <button class="btn danger" onclick="delLastCol()">－ Eliminar columna</button>
+          <div class="sep"></div>
+          <button class="btn" id="merge-btn" onclick="mergeSelection()" title="Selecciona un rango arrastrando y combina en una sola celda" disabled>⊞ Combinar</button>
+          <button class="btn" id="split-btn" onclick="splitSelection()" title="Divide la combinación del rango seleccionado" disabled>⊟ Dividir</button>
           <div class="sep"></div>
           <button class="btn" onclick="resetTable()" title="Tabla en blanco: cabecera + 3×3">↺ Resetear</button>
           <button class="btn danger" onclick="clearAll()">✕ Limpiar todo</button>

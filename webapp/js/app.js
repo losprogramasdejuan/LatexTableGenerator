@@ -1,6 +1,13 @@
 // ── State ──────────────────────────────────────────────────────────────
 let data = [];        // data[row][col] = string
 let numCols = 0;
+let merges = [];      // [{r, c, rowspan, colspan}, ...] — non-overlapping
+let selection = null; // {r1, c1, r2, c2} normalized, or null
+let cellStyles = {};  // { "r,c": {bg, fg} } — per-cell custom colors (sparse)
+
+// Drag-select transient state
+let dragAnchor = null;
+let isDragging = false;
 
 // ── Init ───────────────────────────────────────────────────────────────
 function initDefault() {
@@ -11,8 +18,109 @@ function initDefault() {
     ['G', 'H', 'I'],
   ];
   numCols = 3;
+  merges = [];
+  cellStyles = {};
+  selection = null;
   renderTable();
   renderLatex();
+}
+
+// ── Cell style helpers ─────────────────────────────────────────────────
+function cellStyleKey(r, c) { return `${r},${c}`; }
+function getCellStyle(r, c) { return cellStyles[cellStyleKey(r, c)] || null; }
+function setCellStyleAt(r, c, style) { cellStyles[cellStyleKey(r, c)] = style; }
+function clearCellStyleAt(r, c) { delete cellStyles[cellStyleKey(r, c)]; }
+
+function adjustCellStylesForRowDelete(r) {
+  const next = {};
+  for (const key in cellStyles) {
+    const [kr, kc] = key.split(',').map(Number);
+    if (kr === r) continue;
+    const newR = kr > r ? kr - 1 : kr;
+    next[`${newR},${kc}`] = cellStyles[key];
+  }
+  cellStyles = next;
+}
+function adjustCellStylesForColDelete(c) {
+  const next = {};
+  for (const key in cellStyles) {
+    const [kr, kc] = key.split(',').map(Number);
+    if (kc === c) continue;
+    const newC = kc > c ? kc - 1 : kc;
+    next[`${kr},${newC}`] = cellStyles[key];
+  }
+  cellStyles = next;
+}
+
+// ── Merge / selection helpers ──────────────────────────────────────────
+function getMergeAt(r, c) {
+  return merges.find(m =>
+    r >= m.r && r < m.r + m.rowspan &&
+    c >= m.c && c < m.c + m.colspan
+  ) || null;
+}
+
+function mergeRange(m) {
+  return { rMin: m.r, cMin: m.c, rMax: m.r + m.rowspan - 1, cMax: m.c + m.colspan - 1 };
+}
+
+function rangesOverlap(a, b) {
+  return !(a.rMax < b.rMin || a.rMin > b.rMax || a.cMax < b.cMin || a.cMin > b.cMax);
+}
+
+function expandRangeOverMerges(r1, c1, r2, c2) {
+  let rMin = Math.min(r1, r2), cMin = Math.min(c1, c2);
+  let rMax = Math.max(r1, r2), cMax = Math.max(c1, c2);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const m of merges) {
+      const mr = mergeRange(m);
+      if (rangesOverlap({ rMin, cMin, rMax, cMax }, mr)) {
+        if (mr.rMin < rMin) { rMin = mr.rMin; grew = true; }
+        if (mr.cMin < cMin) { cMin = mr.cMin; grew = true; }
+        if (mr.rMax > rMax) { rMax = mr.rMax; grew = true; }
+        if (mr.cMax > cMax) { cMax = mr.cMax; grew = true; }
+      }
+    }
+  }
+  return { rMin, cMin, rMax, cMax };
+}
+
+function setSelection(r1, c1, r2, c2) {
+  const e = expandRangeOverMerges(r1, c1, r2, c2);
+  selection = { r1: e.rMin, c1: e.cMin, r2: e.rMax, c2: e.cMax };
+}
+
+function clearSelection() { selection = null; }
+
+function isCellSelected(r, c) {
+  if (!selection) return false;
+  return r >= selection.r1 && r <= selection.r2 && c >= selection.c1 && c <= selection.c2;
+}
+
+function colSpecForSpan(c, align, vborder) {
+  const vb = vborder ? '|' : '';
+  return (c === 0 ? vb : '') + align + vb;
+}
+
+function adjustMergesForRowDelete(r) {
+  merges = merges.flatMap(m => {
+    const endR = m.r + m.rowspan - 1;
+    if (endR < r) return [m];
+    if (m.r > r) return [{ ...m, r: m.r - 1 }];
+    if (m.rowspan === 1) return [];
+    return [{ ...m, rowspan: m.rowspan - 1 }];
+  });
+}
+function adjustMergesForColDelete(c) {
+  merges = merges.flatMap(m => {
+    const endC = m.c + m.colspan - 1;
+    if (endC < c) return [m];
+    if (m.c > c) return [{ ...m, c: m.c - 1 }];
+    if (m.colspan === 1) return [];
+    return [{ ...m, colspan: m.colspan - 1 }];
+  });
 }
 
 // ── Table Render ───────────────────────────────────────────────────────
@@ -26,7 +134,6 @@ function renderTable() {
 
   // Column headers (A, B, C…)
   const headRow = document.createElement('tr');
-  // empty corner for row-ctrl
   const cornerTh = document.createElement('th');
   cornerTh.className = 'row-ctrl';
   headRow.appendChild(cornerTh);
@@ -41,34 +148,49 @@ function renderTable() {
   }
   thead.appendChild(headRow);
 
-  // Data rows
-  data.forEach((row, r) => {
+  // Data rows — skip cells hidden under merges
+  for (let r = 0; r < data.length; r++) {
     const tr = document.createElement('tr');
-    const isHeader = r === 0;
-    if (isHeader) tr.classList.add('header-row');
+    if (r === 0) tr.classList.add('header-row');
 
-    // Row control
     const ctrlTd = document.createElement('td');
     ctrlTd.className = 'row-ctrl';
     ctrlTd.innerHTML = `<button class="row-del-btn" title="Eliminar fila" onclick="delRow(${r})">×</button>`;
     tr.appendChild(ctrlTd);
 
-    for (let c = 0; c < numCols; c++) {
+    let c = 0;
+    while (c < numCols) {
+      const startC = c;
+      const m = getMergeAt(r, startC);
+      if (m && (m.r !== r || m.c !== startC)) { c++; continue; } // non-anchor → no td
+
       const td = document.createElement('td');
+      td.dataset.row = r;
+      td.dataset.col = startC;
+      if (m) {
+        td.rowSpan = m.rowspan;
+        td.colSpan = m.colspan;
+        c = startC + m.colspan;
+      } else {
+        c = startC + 1;
+      }
+      if (isCellSelected(r, startC)) td.classList.add('cell-selected');
+
       const inp = document.createElement('input');
       inp.type = 'text';
-      inp.value = row[c] || '';
+      inp.value = data[r][startC] || '';
       inp.dataset.row = r;
-      inp.dataset.col = c;
+      inp.dataset.col = startC;
       inp.addEventListener('input', onCellInput);
       inp.addEventListener('keydown', onCellKeydown);
       td.appendChild(inp);
       tr.appendChild(td);
     }
     tbody.appendChild(tr);
-  });
+  }
 
   updateStatus();
+  updateMergeButtonsState();
   requestAnimationFrame(applyHeaderColors);
 }
 
@@ -99,6 +221,8 @@ function onCellKeydown(e) {
 }
 
 function focusCell(r, c) {
+  const m = getMergeAt(r, c);
+  if (m) { r = m.r; c = m.c; }
   const inp = document.querySelector(`#table-body input[data-row="${r}"][data-col="${c}"]`);
   if (inp) { inp.focus(); inp.select(); }
 }
@@ -112,6 +236,7 @@ function colLetter(c) {
 
 // ── Row / Col operations ───────────────────────────────────────────────
 function addRow() {
+  clearSelection();
   data.push(Array(numCols).fill(''));
   renderTable();
   renderLatex();
@@ -120,6 +245,9 @@ function addRow() {
 
 function delRow(r) {
   if (data.length <= 1) return showToast('Mínimo 1 fila');
+  clearSelection();
+  adjustMergesForRowDelete(r);
+  adjustCellStylesForRowDelete(r);
   data.splice(r, 1);
   renderTable();
   renderLatex();
@@ -128,6 +256,7 @@ function delRow(r) {
 function delLastRow() { delRow(data.length - 1); }
 
 function addCol() {
+  clearSelection();
   numCols++;
   data.forEach(row => row.push(''));
   renderTable();
@@ -137,6 +266,9 @@ function addCol() {
 
 function delCol(c) {
   if (numCols <= 1) return showToast('Mínimo 1 columna');
+  clearSelection();
+  adjustMergesForColDelete(c);
+  adjustCellStylesForColDelete(c);
   numCols--;
   data.forEach(row => row.splice(c, 1));
   renderTable();
@@ -153,6 +285,9 @@ function resetTable() {
     ['', '', ''],
   ];
   numCols = 3;
+  merges = [];
+  cellStyles = {};
+  clearSelection();
   renderTable();
   renderLatex();
   showToast('Tabla reseteada: cabecera + 3 filas × 3 columnas');
@@ -162,8 +297,106 @@ function resetTable() {
 function clearAll() {
   if (!confirm('¿Limpiar toda la tabla?')) return;
   data = data.map(row => Array(numCols).fill(''));
+  merges = [];
+  cellStyles = {};
+  clearSelection();
   renderTable();
   renderLatex();
+}
+
+// ── Merge operations ───────────────────────────────────────────────────
+function mergeSelection() {
+  if (!selection) return showToast('Selecciona celdas primero');
+  const { r1, c1, r2, c2 } = selection;
+  const rowspan = r2 - r1 + 1;
+  const colspan = c2 - c1 + 1;
+  if (rowspan * colspan < 2) return showToast('Selecciona al menos 2 celdas');
+
+  const selRng = { rMin: r1, cMin: c1, rMax: r2, cMax: c2 };
+  merges = merges.filter(m => !rangesOverlap(selRng, mergeRange(m)));
+  merges.push({ r: r1, c: c1, rowspan, colspan });
+
+  renderTable();
+  renderLatex();
+  showToast(`Combinadas ${rowspan}×${colspan} celdas`);
+}
+
+function splitSelection() {
+  if (!selection) return showToast('Selecciona celdas primero');
+  const selRng = { rMin: selection.r1, cMin: selection.c1, rMax: selection.r2, cMax: selection.c2 };
+  const before = merges.length;
+  merges = merges.filter(m => !rangesOverlap(selRng, mergeRange(m)));
+  const removed = before - merges.length;
+  if (!removed) return showToast('Nada que dividir');
+  renderTable();
+  renderLatex();
+  showToast(`${removed} combinación(es) dividida(s)`);
+}
+
+function updateMergeButtonsState() {
+  const mergeBtn = document.getElementById('merge-btn');
+  const splitBtn = document.getElementById('split-btn');
+  if (mergeBtn && splitBtn) {
+    const multi = selection && ((selection.r2 - selection.r1 + 1) * (selection.c2 - selection.c1 + 1) >= 2);
+    const overlaps = selection && merges.some(m => rangesOverlap(
+      { rMin: selection.r1, cMin: selection.c1, rMax: selection.r2, cMax: selection.c2 },
+      mergeRange(m)
+    ));
+    mergeBtn.disabled = !multi;
+    splitBtn.disabled = !overlaps;
+  }
+  const applyBtn = document.getElementById('apply-color-btn');
+  const clearColorBtn = document.getElementById('clear-color-btn');
+  if (applyBtn && clearColorBtn) {
+    let hasCustom = false;
+    if (selection) {
+      for (let r = selection.r1; r <= selection.r2 && !hasCustom; r++) {
+        for (let c = selection.c1; c <= selection.c2; c++) {
+          if (getCellStyle(r, c)) { hasCustom = true; break; }
+        }
+      }
+    }
+    applyBtn.disabled = !selection;
+    clearColorBtn.disabled = !hasCustom;
+  }
+}
+
+// ── Per-cell color operations ─────────────────────────────────────────
+function applyColorToSelection() {
+  if (!selection) return showToast('Selecciona celdas primero');
+  const bg = document.getElementById('cell-bg-select').value;
+  const fg = document.getElementById('cell-fg-select').value;
+  let count = 0;
+  for (let r = selection.r1; r <= selection.r2; r++) {
+    for (let c = selection.c1; c <= selection.c2; c++) {
+      // Skip hidden cells under a merge — only anchor carries style
+      const m = getMergeAt(r, c);
+      if (m && (m.r !== r || m.c !== c)) continue;
+      setCellStyleAt(r, c, { bg, fg });
+      count++;
+    }
+  }
+  renderTable();
+  renderLatex();
+  showToast(`Color aplicado a ${count} celda(s)`);
+}
+
+function clearColorFromSelection() {
+  if (!selection) return showToast('Selecciona celdas primero');
+  let count = 0;
+  for (let r = selection.r1; r <= selection.r2; r++) {
+    for (let c = selection.c1; c <= selection.c2; c++) {
+      if (getCellStyle(r, c)) { clearCellStyleAt(r, c); count++; }
+    }
+  }
+  if (!count) return showToast('Ninguna celda con color personalizado');
+  renderTable();
+  renderLatex();
+  showToast(`Color eliminado de ${count} celda(s)`);
+}
+
+function onCellColorChange() {
+  updateSwatches();
 }
 
 // ── Import ─────────────────────────────────────────────────────────────
@@ -185,6 +418,9 @@ function importPaste() {
     while (padded.length < numCols) padded.push('');
     return padded.map(c => c.trim());
   });
+  merges = [];
+  cellStyles = {};
+  clearSelection();
 
   document.getElementById('paste-input').value = '';
   renderTable();
@@ -245,8 +481,9 @@ const XCOLORS = {
 };
 
 function buildColorSelects() {
-  ['cell-color-select', 'text-color-select'].forEach(id => {
+  ['cell-color-select', 'text-color-select', 'cell-bg-select', 'cell-fg-select'].forEach(id => {
     const sel = document.getElementById(id);
+    if (!sel) return;
     sel.innerHTML = '';
     for (const [group, colors] of Object.entries(XCOLORS)) {
       const og = document.createElement('optgroup');
@@ -260,9 +497,14 @@ function buildColorSelects() {
       sel.appendChild(og);
     }
   });
-  // Set defaults
+  // Header defaults
   document.getElementById('cell-color-select').value = 'black';
   document.getElementById('text-color-select').value = 'white';
+  // Cell-color defaults
+  const bgSel = document.getElementById('cell-bg-select');
+  const fgSel = document.getElementById('cell-fg-select');
+  if (bgSel) bgSel.value = 'yellow';
+  if (fgSel) fgSel.value = 'black';
   updateSwatches();
 }
 
@@ -285,6 +527,13 @@ function updateSwatches() {
   prev.style.background = cellHex;
   prev.style.color = textHex;
   prev.style.fontWeight = isBold() ? '700' : '400';
+  // Cell-color swatches (optional, only if the DOM nodes exist)
+  const bgSel = document.getElementById('cell-bg-select');
+  const fgSel = document.getElementById('cell-fg-select');
+  if (bgSel && fgSel) {
+    document.getElementById('cell-bg-swatch').style.background = getColorHex(bgSel.value);
+    document.getElementById('cell-fg-swatch').style.background = getColorHex(fgSel.value);
+  }
 }
 
 function onSelectChange() {
@@ -299,25 +548,76 @@ function getTextColor() { return document.getElementById('text-color-select').va
 function isBold() { return document.getElementById('header-bold').checked; }
 
 function applyHeaderColors() {
-  const cellHex = getColorHex(getCellColor());
-  const textHex = getColorHex(getTextColor());
-  const headerTds = document.querySelectorAll('#table-body tr.header-row td');
-  headerTds.forEach(td => {
-    td.style.background = cellHex;
-    td.style.color = textHex;
-    const inp = td.querySelector('input');
-    if (inp) {
-      inp.style.color = textHex;
-      inp.style.background = 'transparent';
-      inp.style.caretColor = textHex;
+  const headerBg = getColorHex(getCellColor());
+  const headerFg = getColorHex(getTextColor());
+  document.querySelectorAll('#table-body td').forEach(td => {
+    if (td.classList.contains('row-ctrl')) return;
+    const r = +td.dataset.row, c = +td.dataset.col;
+    if (Number.isNaN(r)) return;
+    const custom = getCellStyle(r, c);
+    let bg = null, fg = null;
+    if (custom) {
+      bg = getColorHex(custom.bg);
+      fg = getColorHex(custom.fg);
+    } else if (r === 0) {
+      bg = headerBg;
+      fg = headerFg;
+    }
+    if (bg !== null) {
+      td.style.background = bg;
+      td.style.color = fg;
+      const inp = td.querySelector('input');
+      if (inp) {
+        inp.style.color = fg;
+        inp.style.background = 'transparent';
+        inp.style.caretColor = fg;
+      }
+    } else {
+      td.style.background = '';
+      td.style.color = '';
+      const inp = td.querySelector('input');
+      if (inp) {
+        inp.style.color = '';
+        inp.style.background = '';
+        inp.style.caretColor = '';
+      }
     }
   });
 }
 
-function wrapHeaderCell(text, cellColor, textColor, bold) {
+function wrapStyledCell(text, bg, fg, bold) {
   const t = escTex(text);
   const inner = bold ? `\\textbf{${t}}` : t;
-  return `\\cellcolor{${cellColor}}{\\textcolor{${textColor}}{${inner}}}`;
+  return `\\cellcolor{${bg}}{\\textcolor{${fg}}{${inner}}}`;
+}
+
+// Build a row's LaTeX tokens (merge-aware). `opts` is a renderer strategy.
+function buildRowTokens(r, opts) {
+  const tokens = [];
+  let c = 0;
+  while (c < numCols) {
+    const startC = c;
+    const m = getMergeAt(r, startC);
+    if (m && m.r === r && m.c === startC) {
+      let content = opts.cellContent(r, startC);
+      if (m.rowspan > 1) content = opts.multirow(m.rowspan, content);
+      if (m.colspan > 1) tokens.push(opts.multicol(m.colspan, colSpecForSpan(startC, opts.align, opts.vborder), content));
+      else tokens.push(content);
+      c = startC + m.colspan;
+    } else if (m && m.c === startC && m.r < r) {
+      // Continuation row of a vertical merge (leftmost col of merge): emit an empty placeholder
+      if (m.colspan > 1) tokens.push(opts.multicol(m.colspan, colSpecForSpan(startC, opts.align, opts.vborder), ''));
+      else tokens.push(opts.empty);
+      c = startC + m.colspan;
+    } else if (m) {
+      // Covered but not leftmost col of merge (handled in the anchor's iteration above)
+      c++;
+    } else {
+      tokens.push(opts.cellContent(r, startC));
+      c++;
+    }
+  }
+  return tokens;
 }
 
 // Shared: read inputs + build \tabla args (plain) used by both renderLatex and copyTable
@@ -331,22 +631,52 @@ function buildArgs() {
   const bold = isBold();
 
   const vb = vborder ? '|' : '';
-  const headerRow = data[0] || [];
-  const bodyRows = data.slice(1);
   const rowSep = hborder ? ' \\\\\n    \\hline' : ' \\\\';
 
   const arg1 = String(numCols);
   const arg2 = manualSpec || (vb + Array(numCols).fill(align).join(vb) + vb);
-  const arg3 = headerRow.map(c => wrapHeaderCell(c, cellColor, textColor, bold)).join(' & ');
-  const arg4 = bodyRows.length
-    ? '\n' + bodyRows.map(row => '    ' + row.map(c => escTex(c)).join(' & ') + rowSep).join('\n') + '\n  '
-    : '';
 
-  return { arg1, arg2, arg3, arg4, headerRow, bodyRows, cellColor, textColor, bold, hborder };
+  const plainMulticol = (n, spec, content) => `\\multicolumn{${n}}{${spec}}{${content}}`;
+  const plainMultirow = (n, content) => `\\multirow{${n}}{*}{${content}}`;
+
+  // Header cell: custom per-cell colors win; else fall back to global header colors
+  const headerCellPlain = (r, c) => {
+    const s = getCellStyle(r, c);
+    const bg = s ? s.bg : cellColor;
+    const fg = s ? s.fg : textColor;
+    return wrapStyledCell(data[r][c] || '', bg, fg, bold);
+  };
+  // Body cell: wrap with cellcolor/textcolor only if a custom style is set
+  const bodyCellPlain = (r, c) => {
+    const s = getCellStyle(r, c);
+    if (s) return wrapStyledCell(data[r][c] || '', s.bg, s.fg, false);
+    return escTex(data[r][c] || '');
+  };
+
+  const arg3 = buildRowTokens(0, {
+    align, vborder, empty: '',
+    cellContent: headerCellPlain,
+    multicol: plainMulticol,
+    multirow: plainMultirow,
+  }).join(' & ');
+
+  const bodyLines = [];
+  for (let r = 1; r < data.length; r++) {
+    const tokens = buildRowTokens(r, {
+      align, vborder, empty: '',
+      cellContent: bodyCellPlain,
+      multicol: plainMulticol,
+      multirow: plainMultirow,
+    });
+    bodyLines.push('    ' + tokens.join(' & ') + rowSep);
+  }
+  const arg4 = bodyLines.length ? '\n' + bodyLines.join('\n') + '\n  ' : '';
+
+  return { arg1, arg2, arg3, arg4, align, vborder, hborder, cellColor, textColor, bold };
 }
 
 function renderLatex() {
-  const { arg1, arg2, headerRow, bodyRows, cellColor, textColor, bold, hborder } = buildArgs();
+  const { arg1, arg2, align, vborder, hborder, cellColor, textColor, bold } = buildArgs();
 
   const h = {
     cmd: s => `<span class="lt-cmd">${s}</span>`,
@@ -361,24 +691,49 @@ function renderLatex() {
     comment: s => `<span class="lt-comment">${s}</span>`,
   };
 
-  const h3cells = headerRow.map(c => {
-    const t = escHtml(escTex(c));
-    const inner = bold ? `${h.cmd('\\textbf{')}${t}${h.brace('}')}` : t;
-    return `${h.cmd('\\cellcolor{')}${h.arg1(escHtml(cellColor))}${h.brace('}')}` +
-      `${h.brace('{')}${h.cmd('\\textcolor{')}${h.arg1(escHtml(textColor))}${h.brace('}')}` +
+  const styledHl = (text, bg, fg, isBoldCell) => {
+    const t = escHtml(escTex(text));
+    const inner = isBoldCell ? `${h.cmd('\\textbf{')}${t}${h.brace('}')}` : t;
+    return `${h.cmd('\\cellcolor{')}${h.arg1(escHtml(bg))}${h.brace('}')}` +
+      `${h.brace('{')}${h.cmd('\\textcolor{')}${h.arg1(escHtml(fg))}${h.brace('}')}` +
       `${h.brace('{')}${inner}${h.brace('}')}${h.brace('}')}`;
+  };
+  const headerCellHl = (r, c) => {
+    const s = getCellStyle(r, c);
+    const bg = s ? s.bg : cellColor;
+    const fg = s ? s.fg : textColor;
+    return styledHl(data[r][c] || '', bg, fg, bold);
+  };
+  const bodyCellHl = (r, c) => {
+    const s = getCellStyle(r, c);
+    if (s) return styledHl(data[r][c] || '', s.bg, s.fg, false);
+    return escHtml(escTex(data[r][c] || ''));
+  };
+  const multicolHl = (n, spec, content) =>
+    `${h.cmd('\\multicolumn{')}${n}${h.brace('}{')}${escHtml(spec)}${h.brace('}{')}${content}${h.brace('}')}`;
+  const multirowHl = (n, content) =>
+    `${h.cmd('\\multirow{')}${n}${h.brace('}{*}{')}${content}${h.brace('}')}`;
+
+  const h3 = buildRowTokens(0, {
+    align, vborder, empty: '',
+    cellContent: headerCellHl, multicol: multicolHl, multirow: multirowHl,
   }).join(h.amp());
 
-  const h4lines = bodyRows.map(row =>
-    '    ' + row.map(c => escHtml(escTex(c))).join(h.amp()) + h.nl() + (hborder ? '\n    ' + h.hline() : '')
-  );
+  const h4lines = [];
+  for (let r = 1; r < data.length; r++) {
+    const tokens = buildRowTokens(r, {
+      align, vborder, empty: '',
+      cellContent: bodyCellHl, multicol: multicolHl, multirow: multirowHl,
+    });
+    h4lines.push('    ' + tokens.join(h.amp()) + h.nl() + (hborder ? '\n    ' + h.hline() : ''));
+  }
   const h4 = h4lines.length ? '\n' + h4lines.join('\n') + '\n  ' : '';
 
   const out = [
     `${h.cmd('\\tabla')}`,
     `  ${h.brace('{')}${h.arg1(escHtml(arg1))}${h.brace('}')}  ${h.comment('% #1 — nº columnas')}`,
     `  ${h.brace('{')}${h.arg2(escHtml(arg2))}${h.brace('}')}  ${h.comment('% #2 — col spec')}`,
-    `  ${h.brace('{')}${h.arg3(h3cells)}${h.brace('}')}  ${h.comment('% #3 — cabecera')}`,
+    `  ${h.brace('{')}${h.arg3(h3)}${h.brace('}')}  ${h.comment('% #3 — cabecera')}`,
     `  ${h.brace('{')}${h.arg4(h4)}${h.brace('}')}  ${h.comment('% #4 — contenido')}`,
   ].join('\n');
 
@@ -460,6 +815,55 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
 }
+
+// ── Drag-select (Excel-like) ───────────────────────────────────────────
+function getCellFromEvent(e) {
+  const td = e.target.closest('#table-body td');
+  if (!td || td.classList.contains('row-ctrl')) return null;
+  const r = +td.dataset.row, c = +td.dataset.col;
+  if (Number.isNaN(r) || Number.isNaN(c)) return null;
+  return { r, c };
+}
+
+function renderSelectionHighlight() {
+  document.querySelectorAll('#table-body td.cell-selected').forEach(td => td.classList.remove('cell-selected'));
+  if (selection) {
+    document.querySelectorAll('#table-body td').forEach(td => {
+      if (td.classList.contains('row-ctrl')) return;
+      const r = +td.dataset.row, c = +td.dataset.col;
+      if (!Number.isNaN(r) && isCellSelected(r, c)) td.classList.add('cell-selected');
+    });
+  }
+  updateMergeButtonsState();
+}
+
+document.addEventListener('pointerdown', e => {
+  const cell = getCellFromEvent(e);
+  if (!cell) return;
+  dragAnchor = [cell.r, cell.c];
+  isDragging = false;
+  setSelection(cell.r, cell.c, cell.r, cell.c);
+  renderSelectionHighlight();
+});
+
+document.addEventListener('pointermove', e => {
+  if (!dragAnchor) return;
+  const cell = getCellFromEvent(e);
+  if (!cell) return;
+  if (!isDragging && (cell.r !== dragAnchor[0] || cell.c !== dragAnchor[1])) {
+    isDragging = true;
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  }
+  if (!isDragging) return;
+  setSelection(dragAnchor[0], dragAnchor[1], cell.r, cell.c);
+  renderSelectionHighlight();
+  e.preventDefault();
+});
+
+document.addEventListener('pointerup', () => {
+  dragAnchor = null;
+  isDragging = false;
+});
 
 // ── Paste event (Ctrl+V anywhere) ──────────────────────────────────────
 document.addEventListener('paste', (e) => {

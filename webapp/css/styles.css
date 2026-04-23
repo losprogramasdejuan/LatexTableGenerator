@@ -130,6 +130,23 @@ main {
   color: var(--mono-bg);
 }
 
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  background: #2a2a26;
+  color: var(--mono-fg);
+  border-color: #555;
+}
+
+.btn.danger:disabled:hover {
+  background: #2a2a26;
+  color: #e07060;
+  border-color: #c84b2f;
+}
+
 .sep {
   width: 1px;
   height: 1.5rem;
@@ -356,6 +373,14 @@ main {
 
 #data-table td input:focus {
   background: rgba(47, 111, 200, 0.07);
+}
+
+#data-table td.cell-selected {
+  box-shadow: inset 0 0 0 2px var(--mono-blue);
+}
+
+#data-table td.cell-selected input {
+  user-select: none;
 }
 
 .row-ctrl {

@@ -11,6 +11,7 @@ Herramienta web para generar código LaTeX de tablas compatible con el `\newcomm
 - **Edición de tabla inline** — celdas editables con navegación por teclado (Tab, Enter, flechas)
 - **Importación desde Excel / CSV** — pega datos copiados directamente desde Excel o cualquier CSV con separador por tabulador, punto y coma o coma
 - **Gestión de filas y columnas** — añadir, eliminar, resetear o limpiar con un clic
+- **Combinar / dividir celdas** — selecciona un rango arrastrando (estilo Excel) y combina horizontal, verticalmente o ambas a la vez; genera `\multicolumn` y `\multirow` automáticamente
 - **Diseño de columnas** — alineación (izquierda, centro, derecha, párrafo), bordes verticales y horizontales, especificación manual de col spec
 - **Cabecera con color** — selector de color de fondo y de texto con paleta completa de colores `xcolor` (base + `dvipsnames`), con previsualización en tiempo real en el grid
 - **Sintaxis resaltada** — el panel derecho muestra el código `\tabla{}{}{}{}`  con colores por argumento
@@ -47,12 +48,13 @@ La herramienta genera código para el siguiente `\newcommand`, que deberás tene
 | `#3` | Fila de cabecera con `\cellcolor` y `\textcolor` |
 | `#4` | Contenido del cuerpo de la tabla |
 
-El botón **Copiar Macro** copia este `\newcommand` completo para que los puedas incluir en tu preámbulo. También necesitarás los paquetes `longtable`, `xcolor` (con la opción `dvipsnames`) y `colortbl` en tu preámbulo:
+El botón **Copiar Macro** copia este `\newcommand` completo para que los puedas incluir en tu preámbulo. También necesitarás los paquetes `longtable`, `xcolor` (con la opción `dvipsnames`), `colortbl` y `multirow` (este último requerido si usas combinaciones verticales de celdas) en tu preámbulo:
 
 ```latex
 \usepackage{longtable}
 \usepackage[dvipsnames]{xcolor}
 \usepackage{colortbl}
+\usepackage{multirow}
 ```
 
 # Uso de la herramienta
