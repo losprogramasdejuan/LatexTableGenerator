@@ -787,6 +787,15 @@ function copyMacro() {
   });
 }
 
+// ── Toggle output ──────────────────────────────────────────────────────
+function toggleOutput() {
+  const panel = document.getElementById('output-collapsible');
+  const btn = document.getElementById('toggle-btn');
+  const open = panel.classList.toggle('open');
+  btn.textContent = open ? '▼ Ver código' : '▲ Ver código';
+  btn.classList.toggle('open', open);
+}
+
 // ── Copy Table ─────────────────────────────────────────────────────────
 function copyTable() {
   const { arg1, arg2, arg3, arg4 } = buildArgs();
@@ -796,7 +805,7 @@ function copyTable() {
     const btn = document.getElementById('copy-btn');
     btn.textContent = '✓ Copiado';
     btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '2.Copiar Tabla'; btn.classList.remove('copied'); }, 1800);
+    setTimeout(() => { btn.textContent = '2. Copiar Tabla'; btn.classList.remove('copied'); }, 1800);
     showToast('Código LaTeX copiado');
   });
 }

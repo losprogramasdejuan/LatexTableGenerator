@@ -140,15 +140,10 @@
       </div>
     </div>
 
-    <!-- RIGHT PANEL -->
-    <div class="right-panel">
-      <div class="output-header">
-        <span>\tabla{<span style="color:var(--mono-orange)">#1</span>}{<span
-            style="color:var(--mono-blue)">#2</span>}{<span style="color:var(--mono-green)">#3</span>}{<span
-            style="color:#e07878">#4</span>}</span>
-        <button class="copy-btn" id="macro-btn" onclick="copyMacro()">1. Copiar Macro</button>
-        <button class="copy-btn" id="copy-btn" onclick="copyTable()">2. Copiar Tabla</button>
-      </div>
+  </main>
+
+  <div class="bottom-panel">
+    <div class="output-collapsible" id="output-collapsible">
       <div class="arg-legend">
         <div class="arg-pill" style="--c:var(--mono-orange)">#1 <span>nº cols</span></div>
         <div class="arg-pill" style="--c:var(--mono-blue)">#2 <span>col spec</span></div>
@@ -157,12 +152,21 @@
       </div>
       <div id="latex-output"></div>
     </div>
-  </main>
-
-  <div class="status-bar" id="status-bar">
-    <div>Filas: <span id="st-rows">0</span></div>
-    <div>Columnas: <span id="st-cols">0</span></div>
-    <div>Celdas: <span id="st-cells">0</span></div>
+    <div class="bottom-bar">
+      <div class="status-info">
+        <div>Filas: <span id="st-rows">0</span></div>
+        <div>Columnas: <span id="st-cols">0</span></div>
+        <div>Celdas: <span id="st-cells">0</span></div>
+      </div>
+      <span class="tabla-sig">\tabla{<span style="color:var(--mono-orange)">#1</span>}{<span
+          style="color:var(--mono-blue)">#2</span>}{<span style="color:var(--mono-green)">#3</span>}{<span
+          style="color:#e07878">#4</span>}</span>
+      <div class="bottom-actions">
+        <button class="copy-btn" id="macro-btn" onclick="copyMacro()">1. Copiar Macro</button>
+        <button class="copy-btn" id="copy-btn" onclick="copyTable()">2. Copiar Tabla</button>
+        <button class="toggle-btn" id="toggle-btn" onclick="toggleOutput()">▲ Ver código</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
