@@ -782,7 +782,7 @@ function copyMacro() {
     const btn = document.getElementById('macro-btn');
     btn.textContent = '✓ Copiado';
     btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = 'Copiar Macro'; btn.classList.remove('copied'); }, 1800);
+    setTimeout(() => { btn.textContent = '1. Copiar Macro'; btn.classList.remove('copied'); }, 1800);
     showToast('\\newcommand{\\tabla} copiado');
   });
 }
@@ -796,7 +796,7 @@ function copyTable() {
     const btn = document.getElementById('copy-btn');
     btn.textContent = '✓ Copiado';
     btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = 'Copiar Tabla'; btn.classList.remove('copied'); }, 1800);
+    setTimeout(() => { btn.textContent = '2.Copiar Tabla'; btn.classList.remove('copied'); }, 1800);
     showToast('Código LaTeX copiado');
   });
 }
