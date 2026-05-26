@@ -24,99 +24,24 @@
 
       <!-- Paste zone -->
       <div class="paste-zone">
-        <label>(Opcional) Pegar CSV / Excel</label>
-        <textarea id="paste-input" placeholder="Pega aquí datos copiados de Excel o CSV y pulsa Importar…"
+        <label>(Opcional) Pegar CSV / Excel / LaTeX</label>
+        <textarea id="paste-input" placeholder="Pega aquí datos: CSV/Excel, código \tabla{...}{...}{...}{...} o \begin{tabular|longtable}…"
           spellcheck="false"></textarea>
         <button class="btn primary" onclick="importPaste()">Importar</button>
       </div>
 
-      <!-- Options bar -->
-      <div class="options-bar">
-        <div class="opt-group">
-          <label title="#2 — especificación de columnas generada automáticamente">Diseño de columnas</label>
-          <select id="align-select" onchange="renderLatex()">
-            <option value="l">l — Alinear a izquierda</option>
-            <option value="c">c — Alinear a centro</option>
-            <option value="r">r — Alinear a derecha</option>
-            <option value="p{2cm}">p{2cm} — párrafo</option>
-          </select>
+      <!-- Ribbon: tabs + panes -->
+      <div class="ribbon">
+        <div class="ribbon-tabs">
+          <button class="ribbon-tab active" data-tab="tabla" onclick="switchTab('tabla')">Tabla</button>
+          <button class="ribbon-tab" data-tab="columnas" onclick="switchTab('columnas')">Columnas</button>
+          <button class="ribbon-tab" data-tab="cabecera" onclick="switchTab('cabecera')">Cabecera</button>
+          <button class="ribbon-tab" data-tab="celdas" onclick="switchTab('celdas')">Color celdas</button>
+          <button class="ribbon-tab" data-tab="zebra" onclick="switchTab('zebra')">Filas alternas</button>
         </div>
-        <div class="opt-group">
-          <label>Bordes vert.</label>
-          <input type="checkbox" id="vborder" onchange="renderLatex()" checked>
-        </div>
-        <div class="opt-group">
-          <label>Bordes horiz.</label>
-          <input type="checkbox" id="hborder" onchange="renderLatex()" checked>
-        </div>
-        <div class="opt-group">
-          <label title="Spec manual sobreescribe el selector">Personalizar columnas</label>
-          <input type="text" id="manual-spec" placeholder="ej. |l|c|r|" oninput="renderLatex()" style="width:130px">
-        </div>
-      </div>
 
-      <!-- Header color bar -->
-      <div class="color-bar">
-        <div class="color-bar-title">Diseño de la cabecera</div>
-        <div class="color-bar-controls">
-          <div class="opt-group">
-            <label>Fondo de celda</label>
-            <div class="color-select-wrap">
-              <div class="color-swatch" id="cell-swatch"></div>
-              <select id="cell-color-select" onchange="onSelectChange()">
-              </select>
-            </div>
-          </div>
-          <div class="sep"></div>
-          <div class="opt-group">
-            <label>Texto</label>
-            <div class="color-select-wrap">
-              <div class="color-swatch" id="text-swatch"></div>
-              <select id="text-color-select" onchange="onSelectChange()">
-              </select>
-            </div>
-          </div>
-          <div class="sep"></div>
-          <div class="opt-group">
-            <label>Negrita</label>
-            <input type="checkbox" id="header-bold" checked onchange="renderLatex()">
-          </div>
-          <div class="sep"></div>
-          <div class="header-cell-preview" id="header-cell-preview">
-            Vista previa
-          </div>
-        </div>
-      </div>
-
-      <!-- Selected-cells color bar -->
-      <div class="color-bar">
-        <div class="color-bar-title">Color de celdas seleccionadas</div>
-        <div class="color-bar-controls">
-          <div class="opt-group">
-            <label>Fondo</label>
-            <div class="color-select-wrap">
-              <div class="color-swatch" id="cell-bg-swatch"></div>
-              <select id="cell-bg-select" onchange="onCellColorChange()"></select>
-            </div>
-          </div>
-          <div class="sep"></div>
-          <div class="opt-group">
-            <label>Texto</label>
-            <div class="color-select-wrap">
-              <div class="color-swatch" id="cell-fg-swatch"></div>
-              <select id="cell-fg-select" onchange="onCellColorChange()"></select>
-            </div>
-          </div>
-          <div class="sep"></div>
-          <button class="btn" id="apply-color-btn" onclick="applyColorToSelection()" title="Aplica los colores elegidos a todas las celdas del rango seleccionado" disabled>Aplicar a selección</button>
-          <button class="btn danger" id="clear-color-btn" onclick="clearColorFromSelection()" title="Quita el color personalizado de las celdas seleccionadas" disabled>Quitar color</button>
-        </div>
-      </div>
-
-      <!-- Toolbar -->
-      <div class="toolbar">
-        <div class="color-bar-title">Diseño de la tabla</div>
-        <div class="color-bar-controls">
+        <!-- Pane: Tabla (estructura) -->
+        <div class="ribbon-pane active" data-pane="tabla">
           <button class="btn" onclick="addRow()">＋ Añadir fila</button>
           <button class="btn danger" onclick="delLastRow()">－ Eliminar fila</button>
           <div class="sep"></div>
@@ -128,6 +53,111 @@
           <div class="sep"></div>
           <button class="btn" onclick="resetTable()" title="Tabla en blanco: cabecera + 3×3">↺ Resetear</button>
           <button class="btn danger" onclick="clearAll()">✕ Limpiar todo</button>
+        </div>
+
+        <!-- Pane: Columnas -->
+        <div class="ribbon-pane" data-pane="columnas">
+          <div class="opt-group">
+            <label title="#2 — especificación de columnas generada automáticamente">Alineación</label>
+            <select id="align-select" onchange="renderLatex()">
+              <option value="l">l — Alinear a izquierda</option>
+              <option value="c">c — Alinear a centro</option>
+              <option value="r">r — Alinear a derecha</option>
+              <option value="p{2cm}">p{2cm} — párrafo</option>
+            </select>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Bordes vert.</label>
+            <input type="checkbox" id="vborder" onchange="renderLatex()" checked>
+          </div>
+          <div class="opt-group">
+            <label>Bordes horiz.</label>
+            <input type="checkbox" id="hborder" onchange="renderLatex()" checked>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label title="Spec manual sobreescribe el selector">Personalizar</label>
+            <input type="text" id="manual-spec" placeholder="ej. |l|c|r|" oninput="renderLatex()" style="width:130px">
+          </div>
+        </div>
+
+        <!-- Pane: Cabecera -->
+        <div class="ribbon-pane" data-pane="cabecera">
+          <div class="opt-group">
+            <label>Fondo de celda</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="cell-swatch"></div>
+              <select id="cell-color-select" onchange="onSelectChange()"></select>
+              <input type="number" class="opacity-input" id="cell-color-opacity" min="5" max="100" step="5" value="100" onchange="onSelectChange()" title="Opacidad (%) — xcolor !xx">
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Texto</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="text-swatch"></div>
+              <select id="text-color-select" onchange="onSelectChange()"></select>
+              <input type="number" class="opacity-input" id="text-color-opacity" min="5" max="100" step="5" value="100" onchange="onSelectChange()" title="Opacidad (%) — xcolor !xx">
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Negrita</label>
+            <input type="checkbox" id="header-bold" checked onchange="renderLatex()">
+          </div>
+          <div class="sep"></div>
+          <div class="header-cell-preview" id="header-cell-preview">Vista previa</div>
+        </div>
+
+        <!-- Pane: Color celdas (selección) -->
+        <div class="ribbon-pane" data-pane="celdas">
+          <div class="opt-group">
+            <label>Fondo</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="cell-bg-swatch"></div>
+              <select id="cell-bg-select" onchange="onCellColorChange()"></select>
+              <input type="number" class="opacity-input" id="cell-bg-opacity" min="5" max="100" step="5" value="100" onchange="onCellColorChange()" title="Opacidad (%) — xcolor !xx">
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Texto</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="cell-fg-swatch"></div>
+              <select id="cell-fg-select" onchange="onCellColorChange()"></select>
+              <input type="number" class="opacity-input" id="cell-fg-opacity" min="5" max="100" step="5" value="100" onchange="onCellColorChange()" title="Opacidad (%) — xcolor !xx">
+            </div>
+          </div>
+          <div class="sep"></div>
+          <button class="btn" id="apply-color-btn" onclick="applyColorToSelection()" title="Aplica los colores elegidos a todas las celdas del rango seleccionado" disabled>Aplicar a selección</button>
+          <button class="btn danger" id="clear-color-btn" onclick="clearColorFromSelection()" title="Quita el color personalizado de las celdas seleccionadas" disabled>Quitar color</button>
+        </div>
+
+        <!-- Pane: Filas alternas (zebra) -->
+        <div class="ribbon-pane" data-pane="zebra">
+          <div class="opt-group">
+            <label>Activar</label>
+            <input type="checkbox" id="alt-rows-enabled" onchange="onAltRowColorChange()">
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Color 1</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="alt-color1-swatch"></div>
+              <select id="alt-color1-select" onchange="onAltRowColorChange()"></select>
+              <input type="number" class="opacity-input" id="alt-color1-opacity" min="5" max="100" step="5" value="20" onchange="onAltRowColorChange()" title="Opacidad (%) — xcolor !xx">
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="opt-group">
+            <label>Color 2</label>
+            <div class="color-select-wrap">
+              <div class="color-swatch" id="alt-color2-swatch"></div>
+              <select id="alt-color2-select" onchange="onAltRowColorChange()"></select>
+              <input type="number" class="opacity-input" id="alt-color2-opacity" min="5" max="100" step="5" value="100" onchange="onAltRowColorChange()" title="Opacidad (%) — xcolor !xx">
+            </div>
+          </div>
         </div>
       </div>
 

@@ -77,14 +77,66 @@ main {
   overflow: hidden;
 }
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
+/* ── RIBBON (tabs) ── */
+.ribbon {
+  background: var(--mono-bg);
   border-bottom: 1.5px solid #333;
-  background: #161612;
+}
+
+.ribbon-tabs {
+  display: flex;
+  background: #0e0e0c;
+  border-bottom: 1px solid #2a2a24;
+  overflow-x: auto;
+}
+
+.ribbon-tab {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  padding: 0.55rem 1.1rem;
+  background: transparent;
+  color: #888;
+  border: none;
+  border-right: 1px solid #1c1c18;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+  position: relative;
+}
+
+.ribbon-tab:hover {
+  background: #1e1e1a;
+  color: var(--mono-fg);
+}
+
+.ribbon-tab.active {
+  background: var(--mono-bg);
+  color: var(--mono-orange);
+}
+
+.ribbon-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--mono-orange);
+}
+
+.ribbon-pane {
+  display: none;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1.25rem;
   flex-wrap: wrap;
+  min-height: 2.6rem;
+}
+
+.ribbon-pane.active {
+  display: flex;
 }
 
 .btn {
@@ -201,17 +253,6 @@ main {
   padding: 1.25rem;
 }
 
-/* ── OPTIONS BAR ── */
-.options-bar {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 0.6rem 1.25rem;
-  border-bottom: 1.5px solid #333;
-  background: #161612;
-  flex-wrap: wrap;
-}
-
 .opt-group {
   display: flex;
   align-items: center;
@@ -247,28 +288,6 @@ main {
   cursor: pointer;
 }
 
-/* ── COLOR BAR ── */
-.color-bar {
-  padding: 0.6rem 1.25rem;
-  border-bottom: 1.5px solid #333;
-  background: var(--mono-bg);
-}
-
-.color-bar-title {
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #555;
-  margin-bottom: 0.45rem;
-}
-
-.color-bar-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
 .color-select-wrap {
   display: flex;
   align-items: center;
@@ -281,6 +300,29 @@ main {
   border: 1.5px solid #444;
   flex-shrink: 0;
   pointer-events: none;
+}
+
+.opacity-input {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  padding: 0.28rem 0.3rem;
+  border: 1.5px solid #444;
+  background: #2a2a26;
+  color: var(--mono-fg);
+  outline: none;
+  width: 52px;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.opacity-input::-webkit-outer-spin-button,
+.opacity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.opacity-input:focus {
+  border-color: var(--mono-blue);
 }
 
 .header-cell-preview {
